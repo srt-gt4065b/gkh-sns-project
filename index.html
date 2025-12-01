@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Biz Connect</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card-hover:hover { transform: translateY(-2px); transition: 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 30px; font-size: 24px; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <!-- 로딩 화면 -->
+    <div id="loading" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+    </div>
+
+    <!-- 로그인 화면 -->
+    <div id="login-screen" class="container vh-100 d-flex flex-column justify-content-center align-items-center">
+        <i class="fas fa-university fa-5x text-primary mb-4"></i>
+        <h1 class="fw-bold">AI Biz Connect</h1>
+        <p class="text-muted mb-5">AI경영학과 학생들을 위한 소통 공간</p>
+        <button class="btn btn-outline-dark btn-lg px-5" onclick="googleLogin()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" class="me-2">
+            Google 계정으로 로그인
+        </button>
+    </div>
+
+    <!-- 메인 앱 화면 (초기엔 숨김) -->
+    <div id="app-screen" style="display: none;">
+        <!-- 네비게이션 바 -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+            <div class="container">
+                <a class="navbar-brand fw-bold" href="#"><i class="fas fa-graduation-cap me-2"></i>AI Biz Connect</a>
+                <div class="d-flex align-items-center">
+                    <span id="user-name" class="text-white me-3 small"></span>
+                    <button class="btn btn-sm btn-light text-primary" onclick="logout()">로그아웃</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 카테고리 탭 -->
+        <div class="container mt-3">
+            <ul class="nav nav-pills nav-fill bg-white rounded shadow-sm p-2 mb-4">
+                <li class="nav-item"><a class="nav-link active" id="tab-QA" onclick="changeTab('QA')" href="#">📚 Q&A</a></li>
+                <li class="nav-item"><a class="nav-link" id="tab-Community" onclick="changeTab('Community')" href="#">💬 소통</a></li>
+                <li class="nav-item"><a class="nav-link" id="tab-Info" onclick="changeTab('Info')" href="#">💡 정보공유</a></li>
+            </ul>
+
+            <!-- 게시글 목록 영역 -->
+            <div id="post-list" class="row g-3">
+                <!-- JS로 게시글이 여기에 렌더링 됩니다 -->
+            </div>
+        </div>
+
+        <!-- 글쓰기 버튼 (FAB) -->
+        <button class="btn btn-primary shadow fab" data-bs-toggle="modal" data-bs-target="#writeModal">
+            <i class="fas fa-pen"></i>
+        </button>
+    </div>
+
+    <!-- 글쓰기 모달 -->
+    <div class="modal fade" id="writeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">새 게시글 작성</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="post-title" class="form-control mb-2" placeholder="제목을 입력하세요">
+                    <textarea id="post-content" class="form-control" rows="5" placeholder="내용을 입력하세요"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary w-100" onclick="savePost()">등록하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상세 보기 모달 -->
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="detail-title">제목</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between text-muted small mb-3">
+                        <span id="detail-author">작성자</span>
+                        <span id="detail-date">날짜</span>
+                    </div>
+                    <div id="detail-content" class="mb-4" style="white-space: pre-wrap;">내용</div>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-indigo border-primary text-primary" onclick="translateContent()">
+                            <i class="fas fa-language me-2"></i>한국어 ↔ English 번역 (AI)
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-danger" id="btn-delete" onclick="deletePost()" style="display:none;">삭제</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // --- 1. Firebase 설정 & 초기화 ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // [중요] 아래 설정을 본인의 Firebase 프로젝트 설정으로 교체하세요!
+        const firebaseConfig = {
+            apiKey: "API_KEY_HERE",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
+
+        // 초기화
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // 전역 변수
+        let currentUser = null;
+        let currentCategory = 'QA';
+        let currentPostId = null; // 상세보기를 위한 ID
+        let postsData = []; // 현재 로드된 게시글 데이터
+
+        // --- 2. 인증 관련 함수 ---
+        window.googleLogin = () => {
+            signInWithPopup(auth, provider).catch((error) => alert(error.message));
+        };
+
+        window.logout = () => {
+            signOut(auth).then(() => location.reload());
+        };
+
+        // 로그인 상태 감지
+        onAuthStateChanged(auth, (user) => {
+            const loginScreen = document.getElementById('login-screen');
+            const appScreen = document.getElementById('app-screen');
+            
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-name').innerText = `${user.displayName}님`;
+                loginScreen.style.display = 'none';
+                appScreen.style.display = 'block';
+                loadPosts(currentCategory); // 초기 데이터 로드
+            } else {
+                currentUser = null;
+                loginScreen.style.display = 'flex';
+                appScreen.style.display = 'none';
+            }
+        });
+
+        // --- 3. 게시판 로직 (CRUD) ---
+        
+        // 탭 변경
+        window.changeTab = (category) => {
+            currentCategory = category;
+            // UI 탭 활성화 변경
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${category}`).classList.add('active');
+            loadPosts(category);
+        };
+
+        // 게시글 불러오기 (실시간)
+        function loadPosts(category) {
+            document.getElementById('loading').style.display = 'flex';
+            const q = query(collection(db, "posts"), where("category", "==", category), orderBy("createdAt", "desc"));
+            
+            onSnapshot(q, (snapshot) => {
+                const listContainer = document.getElementById('post-list');
+                listContainer.innerHTML = '';
+                postsData = [];
+
+                snapshot.forEach((doc) => {
+                    const post = doc.data();
+                    post.id = doc.id;
+                    postsData.push(post);
+
+                    const date = post.createdAt ? new Date(post.createdAt.toDate()).toLocaleDateString() : '방금 전';
+                    
+                    const html = `
+                        <div class="col-12 col-md-6">
+                            <div class="card card-hover border-0 shadow-sm h-100" onclick="openDetail('${post.id}')">
+                                <div class="card-body">
+                                    <h5 class="card-title text-truncate fw-bold">${post.title}</h5>
+                                    <p class="card-text text-muted text-truncate small">${post.content}</p>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-primary"><i class="fas fa-user me-1"></i>${post.authorName}</small>
+                                        <small class="text-muted">${date}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.innerHTML += html;
+                });
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+
+        // 게시글 저장
+        window.savePost = async () => {
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+
+            if (!title || !content) return alert("제목과 내용을 입력해주세요.");
+
+            try {
+                await addDoc(collection(db, "posts"), {
+                    title: title,
+                    content: content,
+                    category: currentCategory,
+                    authorName: currentUser.displayName,
+                    authorUid: currentUser.uid,
+                    createdAt: serverTimestamp()
+                });
+                
+                // 모달 닫기 및 초기화
+                const modalEl = document.getElementById('writeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                document.getElementById('post-title').value = '';
+                document.getElementById('post-content').value = '';
+                
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("저장 중 오류가 발생했습니다.");
+            }
+        };
+
+        // 상세 보기 열기
+        window.openDetail = (id) => {
+            currentPostId = id;
+            const post = postsData.find(p => p.id === id);
+            if (!post) return;
+
+            document.getElementById('detail-title').innerText = post.title;
+            document.getElementById('detail-content').innerText = post.content;
+            document.getElementById('detail-author').innerText = post.authorName;
+            document.getElementById('detail-date').innerText = post.createdAt ? new Date(post.createdAt.toDate()).toLocaleString() : '';
+
+            // 삭제 버튼: 본인 글일 때만 표시
+            const deleteBtn = document.getElementById('btn-delete');
+            if (post.authorUid === currentUser.uid) {
+                deleteBtn.style.display = 'block';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+            modal.show();
+        };
+
+        // 게시글 삭제
+        window.deletePost = async () => {
+            if (!confirm("정말 삭제하시겠습니까?")) return;
+            try {
+                await deleteDoc(doc(db, "posts", currentPostId));
+                const modalEl = document.getElementById('detailModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+            } catch (e) {
+                alert("삭제 권한이 없거나 오류가 발생했습니다.");
+            }
+        };
+
+        // --- 4. 번역 기능 (무료 API 활용) ---
+        window.translateContent = async () => {
+            const titleEl = document.getElementById('detail-title');
+            const contentEl = document.getElementById('detail-content');
+            
+            const originalText = contentEl.innerText;
+            const originalTitle = titleEl.innerText;
+            
+            // 로딩 표시
+            contentEl.innerText = "Translating...";
+            
+            try {
+                // MyMemory Translation API (무료, 일일 제한 있음)
+                // 실제 서비스시 Google Cloud Translation API 사용 권장
+                const translate = async (text) => {
+                    // 한글이 포함되어 있으면 -> 영어로, 아니면 -> 한국어로
+                    const langPair = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text) ? 'ko|en' : 'en|ko';
+                    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`);
+                    const data = await res.json();
+                    return data.responseData.translatedText;
+                };
+
+                const newTitle = await translate(originalTitle);
+                const newContent = await translate(originalText);
+
+                titleEl.innerText = newTitle;
+                contentEl.innerText = newContent;
+
+            } catch (e) {
+                alert("번역 서비스를 불러오지 못했습니다.");
+                contentEl.innerText = originalText; // 복구
+            }
+        };
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
